@@ -4975,7 +4975,7 @@ setInterval(() => {
     const isEnraged = (mob.hp ?? mob.maxHp) < mob.maxHp * 0.4;
     if (isEnraged && !mob.isEnraged) {
       mob.isEnraged = true;
-      io.emit('mob_enraged', { id: mob.id, typeName: mob.typeName, x: Math.round(mob.x), y: Math.round(mob.y) });
+      broadcastMobEventNear(mob, 'mob_enraged', { id: mob.id, typeName: mob.typeName, x: Math.round(mob.x), y: Math.round(mob.y) });
     } else if (!isEnraged && mob.isEnraged) {
       mob.isEnraged = false;
     }
@@ -5002,7 +5002,7 @@ setInterval(() => {
         mob.state = 'attack';
         const webDmg = 20;
         const webDamage = applyMobDamage(mob, target, webDmg, true);
-        io.emit('mob_attack', {
+        broadcastMobEventNear(mob, 'mob_attack', {
           id: mob.id, targetId: target.id, dmg: webDmg, hp: webDamage?.hp, hpSeq: webDamage?.hpSeq,
           typeName: mob.typeName, shape: mob.shape, isWeb: true,
           x: mob.x, y: mob.y, angle: mob.angle, targetX: target.x, targetY: target.y, seq: mob.stateSeq, ts: mob.stateAt
@@ -5015,7 +5015,7 @@ setInterval(() => {
         mob.state = 'attack';
         const slamDmg = 65;
         const damageRes = applyMobDamage(mob, target, slamDmg);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'glacial_slam', targetId: target.id, dmg: slamDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, radius: 150, shape
         });
@@ -5032,7 +5032,7 @@ setInterval(() => {
         mob.vy = Math.sin(targetAngle) * spd * 1.8;
         const dashDmg = 45;
         const damageRes = applyMobDamage(mob, target, dashDmg);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'frost_dash', targetId: target.id, dmg: dashDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, shape
         });
@@ -5049,7 +5049,7 @@ setInterval(() => {
         mob.vy = Math.sin(targetAngle) * spd * 1.6;
         const trampleDmg = 80;
         const damageRes = applyMobDamage(mob, target, trampleDmg);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'trample', targetId: target.id, dmg: trampleDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, shape
         });
@@ -5061,7 +5061,7 @@ setInterval(() => {
         mob.state = 'attack';
         const spitDmg = 38;
         const damageRes = applyMobDamage(mob, target, spitDmg, true);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'venom_spit', targetId: target.id, dmg: spitDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, shape
         });
@@ -5073,7 +5073,7 @@ setInterval(() => {
         mob.state = 'attack';
         const clampDmg = 55;
         const damageRes = applyMobDamage(mob, target, clampDmg);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'pincer_clamp', targetId: target.id, dmg: clampDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, shape
         });
@@ -5085,7 +5085,7 @@ setInterval(() => {
         mob.state = 'attack';
         const whipDmg = 50;
         const damageRes = applyMobDamage(mob, target, whipDmg);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'tail_whip', targetId: target.id, dmg: whipDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, shape
         });
@@ -5102,7 +5102,7 @@ setInterval(() => {
         mob.vy = Math.sin(targetAngle) * spd * 1.8;
         const pounceDmg = 60;
         const damageRes = applyMobDamage(mob, target, pounceDmg);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'blaze_pounce', targetId: target.id, dmg: pounceDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, shape
         });
@@ -5114,7 +5114,7 @@ setInterval(() => {
         mob.state = 'attack';
         const breathDmg = 70;
         const damageRes = applyMobDamage(mob, target, breathDmg);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'inferno_breath', targetId: target.id, dmg: breathDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, angle: mob.angle, shape
         });
@@ -5126,7 +5126,7 @@ setInterval(() => {
         mob.state = 'attack';
         const quakeDmg = 85;
         const damageRes = applyMobDamage(mob, target, quakeDmg);
-        io.emit('mob_ability', {
+        broadcastMobEventNear(mob, 'mob_ability', {
           id: mob.id, ability: 'seismic_quake', targetId: target.id, dmg: quakeDmg, hp: damageRes?.hp,
           x: mob.x, y: mob.y, targetX: target.x, targetY: target.y, radius: 190, shape
         });
@@ -5139,7 +5139,7 @@ setInterval(() => {
         mob.nextAttackAt = now + (mob.isEnraged ? 1050 : 1600);
         mob.chaseUntil = now + MOB_CHASE_TIMEOUT;
         mob.state = 'attack';
-        io.emit('mob_attack', {
+        broadcastMobEventNear(mob, 'mob_attack', {
           id: mob.id, targetId: target.id, dmg: mob.dmg, hp: meleeDamage?.hp, hpSeq: meleeDamage?.hpSeq,
           typeName: mob.typeName, shape: mob.shape,
           x: mob.x, y: mob.y, angle: mob.angle, targetX: target.x, targetY: target.y, seq: mob.stateSeq, ts: mob.stateAt
