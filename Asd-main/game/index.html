@@ -5722,22 +5722,22 @@
         ════════════════════════════════════════════════════════════════ */
         
         const rarityPriceScale = {
-            common: 0.16,
-            rare: 0.52,
-            epic: 1.15,
-            legendary: 2.4,
-            mythic: 4.6
+            common: 0.12,
+            rare: 0.28,
+            epic: 0.5,
+            legendary: 0.9,
+            mythic: 1.0
         };
         const normalizeShopPrice = (value, rarity = 'common') => {
             const base = Number(value || 0);
             const key = String(rarity).toLowerCase();
             const scale = rarityPriceScale[key] || 1;
             const floor = {
-                common: 25,
-                rare: 80,
-                epic: 180,
-                legendary: 420,
-                mythic: 950
+                common: 30,
+                rare: 90,
+                epic: 220,
+                legendary: 650,
+                mythic: 2500
             }[key] || 60;
             const normalized = Math.round(base * scale);
             return Math.max(floor, normalized);
@@ -5777,6 +5777,11 @@
         ].map(item => item.free || item.cost === 0 ? item : { ...item, cost: normalizeShopPrice(item.cost, item.rarity) });
 
         const SKIN_RARITY_ORDER = { common: 0, rare: 1, epic: 2, legendary: 3, mythic: 4 };
+        const sortShopItems = items => items.slice().sort((first, second) =>
+            (SKIN_RARITY_ORDER[first.rarity] ?? 99) - (SKIN_RARITY_ORDER[second.rarity] ?? 99) ||
+            (Number(first.cost) || 0) - (Number(second.cost) || 0) ||
+            first.name.localeCompare(second.name, 'tr-TR')
+        );
         const GENERATED_SKIN_STYLES = {};
         let SHOP_SKINS = [...REAL_SKINS]
             .filter(item => item && item.img && item.img.trim() !== '')
@@ -5846,16 +5851,16 @@
         };
 
         const CHEST_ITEMS = [
-            { id: 'wood_chest', name: 'Wood Chest', img: 'buildassets/windmill_base.png', cost: 1500, rarity: 'common', rewardPool: CHEST_REWARD_POOLS.wood_chest },
-            { id: 'gold_chest', name: 'Gold Chest', img: 'buildassets/doors_premium.png', cost: 4000, rarity: 'rare', rewardPool: CHEST_REWARD_POOLS.gold_chest },
-            { id: 'rare_chest', name: 'Rare Chest', img: 'buildassets/healpad_premium.png', cost: 9000, rarity: 'epic', rewardPool: CHEST_REWARD_POOLS.rare_chest },
-            { id: 'ame_chest', name: 'Ame Chest', img: 'buildassets/turrets_premium.png', cost: 18000, rarity: 'legendary', rewardPool: CHEST_REWARD_POOLS.ame_chest }
+            { id: 'wood_chest', name: 'Wood Chest', img: 'buildassets/windmill_base.png', cost: 250, rarity: 'common', rewardPool: CHEST_REWARD_POOLS.wood_chest },
+            { id: 'gold_chest', name: 'Gold Chest', img: 'buildassets/doors_premium.png', cost: 700, rarity: 'rare', rewardPool: CHEST_REWARD_POOLS.gold_chest },
+            { id: 'rare_chest', name: 'Rare Chest', img: 'buildassets/healpad_premium.png', cost: 1600, rarity: 'epic', rewardPool: CHEST_REWARD_POOLS.rare_chest },
+            { id: 'ame_chest', name: 'Ame Chest', img: 'buildassets/turrets_premium.png', cost: 3200, rarity: 'legendary', rewardPool: CHEST_REWARD_POOLS.ame_chest }
         ];
 
         const ALL_ITEMS_MAP = {
-            deriler: SHOP_SKINS.filter(item => Number(item.cost) > 0),
-            kiliclar: REAL_SWORDS,
-            baltalar: REAL_AXES
+            deriler: sortShopItems(SHOP_SKINS.filter(item => Number(item.cost) > 0)),
+            kiliclar: sortShopItems(REAL_SWORDS),
+            baltalar: sortShopItems(REAL_AXES)
         };
         const COSMETIC_ITEMS_MAP = {
             deriler: SHOP_SKINS,
@@ -5871,7 +5876,7 @@
                 .map(item => ({
                     ...item,
                     img: item.asset,
-                    cost: Math.max(1, Math.ceil((Number(item.price) || 0) / 1000)),
+                    cost: normalizeShopPrice(item.price, item.rarity),
                     free: Number(item.price) <= 0,
                     generated: false,
                     serverCosmetic: true

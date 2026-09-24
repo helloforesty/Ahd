@@ -622,10 +622,10 @@ const XP_RESET_VERSION = 3;
 const COIN_RESET_VERSION = 1;
 
 const CHEST_CONFIG = {
-  wood_chest: { cost: 1500, rewards: ['penguin', 'frog', 'croc', 'fox', 'panda', 'rabbit', 'skin_desert', 'skin_emerald', 'skin_reef', 'skin_steam', 'skin_blossom', 'robot'] },
-  gold_chest: { cost: 4000, rewards: ['dragon', 'phoenix', 'skin_aurora', 'skin_storm', 'skin_sapphire', 'skin_ruby', 'skin_frostwolf', 'skin_cyber', 'yeti', 'robot', 'ninja', 'kiz_orman'] },
-  rare_chest: { cost: 9000, rewards: ['dragon', 'phoenix', 'kiz_ates', 'kiz_buz', 'skin_void', 'skin_moon', 'skin_amethyst', 'skin_icefire', 'skin_reef', 'skin_shadow', 'skin_thunder', 'yeti', 'robot', 'shark'] },
-  ame_chest: { cost: 18000, rewards: ['kiz_ates', 'kiz_buz', 'kiz_samurai', 'skin_magma', 'skin_solar', 'skin_icefire', 'skin_thunder', 'skin_chroma', 'skin_void', 'kiz_karanlik', 'phoenix', 'dragon'] }
+  wood_chest: { cost: 250, rewards: ['penguin', 'frog', 'croc', 'fox', 'panda', 'rabbit', 'skin_desert', 'skin_emerald', 'skin_reef', 'skin_steam', 'skin_blossom', 'robot'] },
+  gold_chest: { cost: 700, rewards: ['dragon', 'phoenix', 'skin_aurora', 'skin_storm', 'skin_sapphire', 'skin_ruby', 'skin_frostwolf', 'skin_cyber', 'yeti', 'robot', 'ninja', 'kiz_orman'] },
+  rare_chest: { cost: 1600, rewards: ['dragon', 'phoenix', 'kiz_ates', 'kiz_buz', 'skin_void', 'skin_moon', 'skin_amethyst', 'skin_icefire', 'skin_reef', 'skin_shadow', 'skin_thunder', 'yeti', 'robot', 'shark'] },
+  ame_chest: { cost: 3200, rewards: ['kiz_ates', 'kiz_buz', 'kiz_samurai', 'skin_magma', 'skin_solar', 'skin_icefire', 'skin_thunder', 'skin_chroma', 'skin_void', 'kiz_karanlik', 'phoenix', 'dragon'] }
 };
 const cosmeticCatalog = [];
 const COSMETIC_TYPES = new Set(['skin', 'axe', 'sword']);
@@ -634,18 +634,24 @@ const FREE_SHOP_ITEMS = new Set(['wolf', 'default', 'ki_tier_0', 'ba_tier_0']);
 function normalizeShopItemId(itemId) {
   return String(itemId || '').trim().toLowerCase();
 }
+function normalizedShopPrice(value, rarity = 'common') {
+  const key = String(rarity || 'common').toLowerCase();
+  const scale = { common: 0.12, rare: 0.28, epic: 0.5, legendary: 0.9, mythic: 1.0 }[key] || 0.5;
+  const floor = { common: 30, rare: 90, epic: 220, legendary: 650, mythic: 2500 }[key] || 220;
+  return Math.max(floor, Math.round((Number(value) || 0) * scale));
+}
 const BUILTIN_SHOP_PRICES = Object.freeze({
-  fox: 320, dragon: 3200, ninja: 1500, skull: 1700, polarbear: 420,
-  lion: 1500, croc: 390, frog: 340, phoenix: 4400, robot: 1800,
-  panda: 500, shark: 1700, rabbit: 410, penguin: 120, octopus: 1600,
-  yeti: 1500, kiz_ates: 3600, kiz_buz: 3600, kiz_samurai: 4200,
-  kiz_peri: 4600, kiz_neon: 5000, kiz_vampir: 5600, kiz_orman: 3900,
-  kiz_deniz: 4200, kiz_sakura: 4400, kiz_karanlik: 6200,
-  skin_aurora: 780, skin_storm: 780, skin_magma: 1800, skin_void: 2000,
-  skin_solar: 1900, skin_moon: 760, skin_emerald: 360, skin_sapphire: 420,
-  skin_ruby: 820, skin_amethyst: 860, skin_cyber: 2100, skin_steam: 350,
-  skin_icefire: 2400, skin_thunder: 2300, skin_blossom: 330, skin_reef: 380,
-  skin_desert: 180, skin_frostwolf: 1900, skin_shadow: 1900, skin_chroma: 2600,
+  fox: 90, dragon: 1080, ninja: 400, skull: 450, polarbear: 126,
+  lion: 425, croc: 112, frog: 98, phoenix: 1350, robot: 500,
+  panda: 140, shark: 475, rabbit: 112, penguin: 30, octopus: 450,
+  yeti: 425, kiz_ates: 1260, kiz_buz: 1260, kiz_samurai: 1440,
+  kiz_peri: 1620, kiz_neon: 1800, kiz_vampir: 1980, kiz_orman: 1350,
+  kiz_deniz: 1440, kiz_sakura: 1530, kiz_karanlik: 2160,
+  skin_aurora: 220, skin_storm: 220, skin_magma: 650, skin_void: 650,
+  skin_solar: 650, skin_moon: 220, skin_emerald: 90, skin_sapphire: 90,
+  skin_ruby: 220, skin_amethyst: 220, skin_cyber: 650, skin_steam: 90,
+  skin_icefire: 650, skin_thunder: 650, skin_blossom: 90, skin_reef: 90,
+  skin_desert: 30, skin_frostwolf: 220, skin_shadow: 220, skin_chroma: 650,
   ninja_4k_asset: 1500, deniz_4k_asset: 1500, ates_4k_asset: 1800,
   tavsan_4k_asset: 1300, panda_4k_asset: 1400, robot_4k_asset: 1800,
   kafatasi_4k_asset: 1500, ejder_4k_asset: 2200, savasci_4k_asset: 1700,
@@ -655,15 +661,15 @@ const BUILTIN_SHOP_PRICES = Object.freeze({
   toprak_titani_god_tier: 5400, biyo_mutant_god_tier: 5600,
   siber_iblis_god_tier: 6200, kadim_dehset_god_tier_2: 7000,
   kozmik_varlik_god_tier: 7800,
-  ki_tier_1: 260, ki_tier_2: 520, ki_tier_3: 850, ki_tier_4: 1400,
-  ki_tier_5: 2200, ki_tier_6: 3400,
-  ba_tier_1: 260, ba_tier_2: 520, ba_tier_3: 850, ba_tier_4: 1400,
-  ba_tier_5: 2200, ba_tier_6: 3400
+  ki_tier_1: 30, ki_tier_2: 126, ki_tier_3: 220, ki_tier_4: 550,
+  ki_tier_5: 800, ki_tier_6: 1250,
+  ba_tier_1: 30, ba_tier_2: 126, ba_tier_3: 220, ba_tier_4: 550,
+  ba_tier_5: 800, ba_tier_6: 1250
 });
 function findShopItem(itemId) {
   const id = normalizeShopItemId(itemId);
   const catalogItem = cosmeticCatalog.find(item => item.id === id);
-  if (catalogItem) return { ...catalogItem, price: Math.max(1, Math.ceil((Number(catalogItem.price) || 0) / 1000)) };
+  if (catalogItem) return { ...catalogItem, price: normalizedShopPrice(catalogItem.price, catalogItem.rarity) };
   const price = BUILTIN_SHOP_PRICES[id];
   if (price === undefined) return null;
   return { id, type: id.startsWith('ki_') ? 'sword' : id.startsWith('ba_') ? 'axe' : 'skin', price };
