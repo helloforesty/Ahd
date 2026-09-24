@@ -2357,42 +2357,20 @@ async function handleApi(request, response, requestPath) {
       sendJson(response, 429, { error: 'Maç sonucu gönderme limiti aşıldı.' });
       return true;
     }
-    const reqXp = clampNumber(body.xp, 0, 0, 10000);
-    const gainedXp = Math.max(0, Math.min(600, Math.round(reqXp * MATCH_XP_RATE)));
     const startXP = Math.max(0, Number(user.xp) || 0);
     const previousRank = rankInfo(user.xp || 0).rankId;
-    const nextKills = clampNumber(body.kills, 0, 0, 5000);
-    const nextDeaths = clampNumber(body.deaths, 0, 0, 5000);
-    const nextTime = clampNumber(body.timePlayed, 0, 0, 36000);
-    const nextScore = clampNumber(body.score, 0, 0, MAX_ACCOUNT_SCORE);
-
-    user.xp = clampNumber((user.xp || 0) + gainedXp, 0, 0, MAX_ACCOUNT_XP);
-    user.kills = (user.kills || 0) + nextKills;
-    user.deaths = (user.deaths || 0) + nextDeaths;
-    user.gamesPlayed = (user.gamesPlayed || user.games || 0) + 1;
-    user.games = user.gamesPlayed;
-    user.timePlayed = (user.timePlayed || 0) + nextTime;
-    user.score = Math.max(user.score || 0, nextScore);
-    user.bestScore = Math.max(user.bestScore || 0, user.score);
     const currentRank = rankInfo(user.xp);
-    user.rankId = currentRank.rankId;
-
-    if (user.referredBy) {
-      updateReferredFriendProgress(user, 0, nextKills, nextTime);
-    }
-
-    saveAccountData(true);
 
     sendJson(response, 200, {
       ...profileResponse(user),
       newXp: user.xp,
-      xpGained: gainedXp,
+      xpGained: 0,
       rankUp: currentRank.rankId > previousRank,
       newRankName: currentRank.name,
       newRankIcon: currentRank.icon,
       currentLevel: previousRank + 1,
       startXP,
-      gainedXP: gainedXp,
+      gainedXP: 0,
       maxXPForCurrentLevel: Math.max(0, rankInfo(startXP).nextMinXP - rankInfo(startXP).minXP),
     });
     return true;
@@ -4605,6 +4583,14 @@ function onPlayerDeath(playerId) {
   deletePlayerBuildings(playerId);
   const target = players.get(playerId);
   if (target) {
+    if (target._authUser && !target._matchFinalized) {
+      const matchKills = Math.max(0, (Number(target.kills) || 0) - (Number(target.matchStartKills) || 0));
+      const matchScore = Math.max(0, (Number(target.score) || 0) - (Number(target.matchStartScore) || 0));
+      const matchGold = Math.max(0, (Number(target.gold) || 0) - (Number(target.matchStartGold) || 0));
+      const matchTime = Math.max(0, Math.min(86400, Math.floor((Date.now() - (Number(target.matchStartedAt) || Date.now())) / 1000)));
+      recordDeathScore(target.name, matchScore, matchGold, matchKills, matchTime, target._authUser, true);
+      target._matchFinalized = true;
+    }
     target.wood = 0;
     target.stone = 0;
     target.gold = 0;
@@ -6287,6 +6273,11 @@ io.on('connection', (socket) => {
       kills: authUser ? Math.max(0, Number(authUser.kills) || 0) : 0,
       score: initialScore,
       sc: initialScore,
+      matchStartKills: authUser ? Math.max(0, Number(authUser.kills) || 0) : 0,
+      matchStartScore: initialScore,
+      matchStartGold: 0,
+      matchStartedAt: Date.now(),
+      _matchFinalized: false,
       id: socket.id,
       clanId: '',
       clanTag: '',
@@ -6469,6 +6460,11 @@ io.on('connection', (socket) => {
         stateSeq: 0,
         hpSeq: 0,
         stateAt: Date.now(),
+        matchStartKills: authUser ? Math.max(0, Number(authUser.kills) || 0) : 0,
+        matchStartScore: 0,
+        matchStartGold: 0,
+        matchStartedAt: Date.now(),
+        _matchFinalized: false,
         _dead: false,
         _authUser: authUser
       };
@@ -6482,6 +6478,11 @@ io.on('connection', (socket) => {
       player.score = 0;
       player.sc = 0;
       player.gold = 0;
+      player.matchStartKills = player._authUser ? Math.max(0, Number(player._authUser.kills) || 0) : 0;
+      player.matchStartScore = 0;
+      player.matchStartGold = 0;
+      player.matchStartedAt = Date.now();
+      player._matchFinalized = false;
       player.xp = player._authUser ? Math.max(0, Number(player._authUser.xp) || 0) : Math.max(0, Number(player.xp) || 0);
       player.rankId = player._authUser ? rankInfo(player.xp).rankId : player.rankId;
       player.rankName = player._authUser ? rankInfo(player.xp).name : player.rankName;
