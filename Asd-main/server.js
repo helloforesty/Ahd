@@ -3944,11 +3944,11 @@ function applyMobSpikeDamage(mob, spike, now) {
   const damage = [45, 75, 110, 160, 220, 300][tier] || 45;
   mob.hp = Math.max(0, mob.hp - damage);
   mob.stateSeq = (mob.stateSeq || 0) + 1;
-  io.emit('mob_update', { id: mob.id, seq: mob.stateSeq, ts: now, hp: mob.hp, maxHp: mob.maxHp, hitFlash: 8 });
+  broadcastMobEventNear(mob, 'mob_update', { id: mob.id, seq: mob.stateSeq, ts: now, hp: mob.hp, maxHp: mob.maxHp, hitFlash: 8 });
   if (mob.hp <= 0) {
     mobs.delete(mob.id);
     const ownerId = spike.ownerId || spike._ownerId;
-    io.emit('mob_dead', { id: mob.id, killerId: ownerId });
+    broadcastMobEventNear(mob, 'mob_dead', { id: mob.id, killerId: ownerId });
     const owner = players.get(ownerId);
     if (owner) {
       const rewardGold = Math.max(1, Math.floor((mob.goldReward || 10) * 0.65));
@@ -4253,6 +4253,19 @@ function broadcastPlayerEventNear(player, event, payload) {
   }
 }
 
+function broadcastMobEventNear(mob, event, payload) {
+  if (!mob) return;
+  const nearby = nearbyPlayers(mob.x, mob.y, MOB_AOI_RADIUS);
+  for (const observer of nearby) {
+    if (!observer || observer.isBot) continue;
+    const socket = io.sockets.sockets.get(observer.id);
+    if (socket?.connected) socket.emit(event, payload);
+  }
+  for (const [id, socket] of io.sockets.sockets) {
+    if (socket.data.isSpectator && socket.connected) socket.emit(event, payload);
+  }
+}
+
 function broadcastTrapStateNear(target, payload) {
   broadcastPlayerEventNear(target, 'trap_state', payload);
 }
@@ -4381,11 +4394,11 @@ function applySpikeDamageToMob(mob, spike, attacker, now = Date.now()) {
   mob.targetId = attacker.id;
   mob.chaseUntil = now + MOB_CHASE_TIMEOUT;
   mob.stateSeq = (mob.stateSeq || 0) + 1;
-  io.emit('mob_update', { id: mob.id, seq: mob.stateSeq, hp: mob.hp, maxHp: mob.maxHp, hitFlash: 8, targetId: attacker.id });
+  broadcastMobEventNear(mob, 'mob_update', { id: mob.id, seq: mob.stateSeq, hp: mob.hp, maxHp: mob.maxHp, hitFlash: 8, targetId: attacker.id });
 
   if (mob.hp <= 0) {
     mobs.delete(mob.id);
-    io.emit('mob_dead', { id: mob.id, killerId: attacker.id });
+    broadcastMobEventNear(mob, 'mob_dead', { id: mob.id, killerId: attacker.id });
     const rewardGold = Math.max(1, Math.floor((mob.goldReward || 10) * 0.65));
     const rewardXp = Math.max(1, Math.round((mob.xpReward || 35) * Math.max(0.1, Number(adminConfig.xpRate) || 1)));
     const rewardScore = Math.round(rewardXp * 0.75 + rewardGold * 3);
@@ -7208,7 +7221,7 @@ io.on('connection', (socket) => {
     mob.chaseUntil = now + MOB_CHASE_TIMEOUT;
 
     mob.stateSeq = (mob.stateSeq || 0) + 1;
-    io.emit('mob_update', {
+    broadcastMobEventNear(mob, 'mob_update', {
       id: mob.id, seq: mob.stateSeq, ts: now, x: mob.x, y: mob.y,
       vx: mob.vx, vy: mob.vy, angle: mob.angle,
       hp: mob.hp, maxHp: mob.maxHp, hitFlash: 8, targetId: socket.id
@@ -7216,7 +7229,7 @@ io.on('connection', (socket) => {
 
     if (mob.hp <= 0) {
       mobs.delete(mob.id);
-      io.emit('mob_dead', { id: mob.id, killerId: socket.id });
+      broadcastMobEventNear(mob, 'mob_dead', { id: mob.id, killerId: socket.id });
 
       const rewardGold = Math.max(1, Math.floor((mob.goldReward || 10) * 0.65));
       const rewardXp = Math.max(1, Math.round((mob.xpReward || 35) * Math.max(0.1, Number(adminConfig.xpRate) || 1)));
