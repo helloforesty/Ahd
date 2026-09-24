@@ -631,6 +631,9 @@ const cosmeticCatalog = [];
 const COSMETIC_TYPES = new Set(['skin', 'axe', 'sword']);
 const COSMETIC_RARITIES = new Set(['common', 'rare', 'epic', 'legendary', 'mythic']);
 const FREE_SHOP_ITEMS = new Set(['wolf', 'default', 'ki_tier_0', 'ba_tier_0']);
+function normalizeShopItemId(itemId) {
+  return String(itemId || '').trim().toLowerCase();
+}
 const BUILTIN_SHOP_PRICES = Object.freeze({
   fox: 320, dragon: 3200, ninja: 1500, skull: 1700, polarbear: 420,
   lion: 1500, croc: 390, frog: 340, phoenix: 4400, robot: 1800,
@@ -658,7 +661,7 @@ const BUILTIN_SHOP_PRICES = Object.freeze({
   ba_tier_5: 2200, ba_tier_6: 3400
 });
 function findShopItem(itemId) {
-  const id = String(itemId || '');
+  const id = normalizeShopItemId(itemId);
   const catalogItem = cosmeticCatalog.find(item => item.id === id);
   if (catalogItem) return { ...catalogItem, price: Math.max(1, Math.ceil((Number(catalogItem.price) || 0) / 1000)) };
   const price = BUILTIN_SHOP_PRICES[id];
@@ -1007,7 +1010,7 @@ function canUseThor(user) {
 }
 
 function ownedItemsForUser(user, items) {
-  const ownedItems = Array.isArray(items) ? [...new Set(items.map(String))] : [];
+  const ownedItems = Array.isArray(items) ? [...new Set(items.map(normalizeShopItemId).filter(Boolean))] : [];
   return canUseThor(user) ? ownedItems : ownedItems.filter(itemId => itemId !== 'thor');
 }
 
@@ -1024,13 +1027,13 @@ function equippedItemsForUser(user, items) {
 }
 
 function canEquipShopItem(user, category, itemId) {
-  const id = String(itemId || '');
+  const id = normalizeShopItemId(itemId);
   if (!['deriler', 'kiliclar', 'baltalar'].includes(category)) return true;
   if (id === 'thor') return canUseThor(user);
   if (FREE_SHOP_ITEMS.has(id)) return true;
   const catalogItem = cosmeticCatalog.find(item => item.id === id);
   if (catalogItem && Number(catalogItem.price) <= 0) return true;
-  return Array.isArray(user?.ownedItems) && user.ownedItems.includes(id);
+  return Array.isArray(user?.ownedItems) && user.ownedItems.some(ownedId => normalizeShopItemId(ownedId) === id);
 }
 
 function cosmeticAssetForSkin(skinId) {
@@ -2921,7 +2924,7 @@ async function handleApi(request, response, requestPath) {
     if (!user) sendJson(response, 401, { error: 'Oturum gereklidir.' });
     else {
       let cat = String(body.category || '');
-      const item = String(body.itemId || '');
+      const item = normalizeShopItemId(body.itemId);
       if (cat) {
         if (cat === 'pp') cat = 'deriler';
         if (item === 'thor' && !canUseThor(user)) {
@@ -3011,7 +3014,7 @@ async function handleApi(request, response, requestPath) {
         sendJson(response, 429, { error: 'Alışveriş limiti aşıldı.' });
         return true;
       }
-      const itemId = String(body.itemId || '');
+      const itemId = normalizeShopItemId(body.itemId);
       const chest = CHEST_CONFIG[String(body.chestId || itemId)];
       if (chest) {
         if ((user.diamonds || 0) < chest.cost) {
