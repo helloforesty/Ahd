@@ -954,6 +954,21 @@ function applyDailyQuestProgress(user, deltas = {}) {
   return daily;
 }
 
+function recordServerQuestProgress(player, deltas = {}) {
+  if (!player?._authUser || !deltas || typeof deltas !== 'object') return;
+  applyDailyQuestProgress(player._authUser, deltas);
+  saveAccountData();
+}
+
+function questMobKey(mob) {
+  const shape = String(mob?.shape || '').toLowerCase();
+  if (shape.includes('wolf')) return 'wolves';
+  if (shape.includes('bear')) return 'bears';
+  if (shape.includes('scorpion')) return 'scorpions';
+  if (shape.includes('spider') || shape.includes('orumcek')) return 'spiders';
+  return null;
+}
+
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
   return { salt, hash: crypto.scryptSync(password, salt, 64).toString('hex') };
 }
@@ -4374,6 +4389,8 @@ function applySpikeDamageToMob(mob, spike, attacker, now = Date.now()) {
     attacker.gold = (attacker.gold || 0) + rewardGold;
     attacker.xp = (attacker.xp || 0) + rewardXp;
     attacker.score = (attacker.score || 0) + rewardScore;
+    const mobQuestKey = questMobKey(mob);
+    recordServerQuestProgress(attacker, { kills: 1, ...(mobQuestKey ? { [mobQuestKey]: 1 } : {}), gold: rewardGold });
     persistPlayerScore(attacker);
     const attackerSocket = io.sockets.sockets.get(attacker.id);
     if (attackerSocket) {
@@ -4577,6 +4594,7 @@ function onPlayerDeath(playerId) {
       const matchScore = Math.max(0, (Number(target.score) || 0) - (Number(target.matchStartScore) || 0));
       const matchGold = Math.max(0, (Number(target.gold) || 0) - (Number(target.matchStartGold) || 0));
       const matchTime = Math.max(0, Math.min(86400, Math.floor((Date.now() - (Number(target.matchStartedAt) || Date.now())) / 1000)));
+      recordServerQuestProgress(target, { kills: matchKills, time: Math.floor(matchTime / 60) });
       recordDeathScore(target.name, matchScore, matchGold, matchKills, matchTime, target._authUser, Boolean(target._authUser));
       target._matchFinalized = true;
     }
@@ -6954,6 +6972,7 @@ io.on('connection', (socket) => {
       airdrops.delete(ad.id);
       player.gold = (player.gold || 0) + ad.gold;
       player.score = (player.score || 0) + ad.gold;
+      recordServerQuestProgress(player, { airdrops: 1, gold: ad.gold });
       io.emit('airdrop_opened', {
         id: ad.id,
         x: ad.x,
@@ -7102,6 +7121,7 @@ io.on('connection', (socket) => {
     player.gold = (player.gold || 0) + gainedGold;
     player.apples = (player.apples || 0) + gainedApples;
     player.score = (player.score || 0) + gainedScore;
+    recordServerQuestProgress(player, { wood: gainedWood, stone: gainedStone, gold: gainedGold });
 
     if (player._authUser && gainedGold > 0) {
       player._authUser.coins = (player._authUser.coins || 0) + gainedGold;
@@ -7222,6 +7242,8 @@ io.on('connection', (socket) => {
       attacker.gold = (attacker.gold || 0) + rewardGold;
       attacker.xp = (attacker.xp || 0) + rewardXp;
       attacker.score = (attacker.score || 0) + rewardScore;
+      const mobQuestKey = questMobKey(mob);
+      recordServerQuestProgress(attacker, { kills: 1, ...(mobQuestKey ? { [mobQuestKey]: 1 } : {}), gold: rewardGold });
       if (attacker._authUser) {
         attacker._authUser.xp = (attacker._authUser.xp || 0) + rewardXp;
         attacker._authUser.rankId = rankInfo(attacker._authUser.xp).rankId;
@@ -7333,6 +7355,7 @@ io.on('connection', (socket) => {
     owner.attackUntil = now + 240;
     owner.lastSwingAt = now;
     buildings.set(id, building);
+    recordServerQuestProgress(owner, { buildings: 1 });
     const cellKey = `${Math.floor((Number(building.x) || 0) / BUILDING_CELL_SIZE)},${Math.floor((Number(building.y) || 0) / BUILDING_CELL_SIZE)}`;
     const bucket = buildingGrid.get(cellKey);
     if (bucket) bucket.push(building);
