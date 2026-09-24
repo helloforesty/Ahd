@@ -361,7 +361,7 @@ const SOCKET_EVENT_LIMITS = {
   state: [90, 1000], swing: [35, 1000], pvp_hit: [35, 1000], arrow_hit: [16, 1000],
   spike_hit: [20, 1000], airdrop_hit: [20, 1000], trap_touch: [25, 1000],
   trap_owner_push: [35, 1000], res_hit: [25, 1000], mob_hit_req: [20, 1000],
-  place_building: [25, 1000], build_hp_update: [20, 1000], build_tier_update: [12, 1000],
+  place_building: [25, 1000], building_hit: [20, 1000], build_hp_update: [20, 1000], build_tier_update: [12, 1000],
   chat: [4, 2000], quick_chat: [8, 2000], eat_apple: [12, 1000]
 };
 
@@ -2173,8 +2173,6 @@ async function handleApi(request, response, requestPath) {
     if (accountData.users[key]) { sendJson(response, 409, { error: 'Bu kullanıcı adı zaten kayıtlı.' }); return true; }
     if (Object.values(accountData.users).some(user => String(user.email || '').trim().toLowerCase() === email)) { sendJson(response, 409, { error: 'Bu e-posta zaten kayıtlı.' }); return true; }
     const password = hashPassword(String(body.password));
-    const initXp = Math.max(0, Math.min(1000000, Math.floor(Number(body.initialXp) || 0)));
-
     // Referans davet kodu kontrolü
     const referralCode = String(body.referralCode || body.ref || '').trim();
     let inviter = null;
@@ -2190,26 +2188,26 @@ async function handleApi(request, response, requestPath) {
     }
 
     // Davet koduyla katılan kullanıcıya başlangıçta +300 bonus altın verilir
-    const initCoins = Math.max(0, Number(body.initialGold) || 0) + (inviter ? 300 : 0);
+    const initCoins = inviter ? 300 : 0;
     const user = {
       id: accountData.nextId++,
       username,
       email,
       ...password,
-      rankId: rankInfo(initXp).rankId,
-      xp: initXp,
-      score: Math.max(0, Number(body.initialScore) || 0),
-      kills: Math.max(0, Number(body.initialKills) || 0),
+      rankId: rankInfo(0).rankId,
+      xp: 0,
+      score: 0,
+      kills: 0,
       deaths: 0,
       games: 0,
       gamesPlayed: 0,
-      bestScore: Math.max(0, Number(body.initialScore) || 0),
-      timePlayed: Math.max(0, Number(body.initialTime) || 0),
+      bestScore: 0,
+      timePlayed: 0,
       coins: initCoins,
       gold: initCoins,
       diamonds: 0,
-      ownedItems: ownedItemsForUser(null, body.initialOwnedItems),
-      equippedItems: equippedItemsForUser(null, body.initialEquippedItems),
+      ownedItems: [],
+      equippedItems: {},
       dailyReward: { day: 1, claimedDate: '' },
       claimedLevelRewards: [],
       settings: (body.initialSettings && typeof body.initialSettings === 'object') ? { ...body.initialSettings } : {},
@@ -7169,13 +7167,6 @@ io.on('connection', (socket) => {
     });
   });
   socket.on('ping_req', (data) => socket.emit('pong_res', typeof data === 'object' && data ? data : { t: data }));
-  // Death is emitted only by server-side damage handlers.
-  socket.on('player_dead', () => {
-    onPlayerDeath(socket.id);
-  });
-  socket.on('player_died', () => {
-    onPlayerDeath(socket.id);
-  });
   socket.on('eat_apple', () => {
     if (socketEventRateLimited(socket, 'eat_apple')) return;
     const player = players.get(socket.id);
@@ -7385,6 +7376,7 @@ io.on('connection', (socket) => {
     io.emit('trap_freed', { buildingId: id });
   });
   socket.on('building_hit', ({ id, dmg } = {}) => {
+    if (socketEventRateLimited(socket, 'building_hit')) return;
     const building = buildings.get(id) || buildings.get(String(id));
     const attacker = players.get(socket.id);
     if (!building || !attacker || attacker.hp <= 0) return;
