@@ -4255,14 +4255,18 @@ function broadcastPlayerEventNear(player, event, payload) {
 
 function broadcastMobEventNear(mob, event, payload) {
   if (!mob) return;
+  const sentTo = new Set();
   const nearby = nearbyPlayers(mob.x, mob.y, MOB_AOI_RADIUS);
   for (const observer of nearby) {
     if (!observer || observer.isBot) continue;
     const socket = io.sockets.sockets.get(observer.id);
-    if (socket?.connected) socket.emit(event, payload);
+    if (socket?.connected) {
+      socket.emit(event, payload);
+      sentTo.add(observer.id);
+    }
   }
   for (const [id, socket] of io.sockets.sockets) {
-    if (socket.data.isSpectator && socket.connected) socket.emit(event, payload);
+    if (socket.data.isSpectator && socket.connected && !sentTo.has(id)) socket.emit(event, payload);
   }
 }
 
