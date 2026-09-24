@@ -2291,19 +2291,11 @@ async function handleApi(request, response, requestPath) {
   
   if (requestPath === '/api/leaderboard/submit' && request.method === 'POST') {
     const authUser = getAuthUser(request);
-    const guestId = String(body.guestId || '').trim();
-    const requestedName = String(body.name || '').trim().slice(0, 20);
-    if (!authUser && (!guestId || !requestedName || accountData.users[usernameKey(requestedName)])) {
-      sendJson(response, 400, { error: 'Geçerli bir misafir kimliği ve oyuncu adı gerekli.' });
+    if (!authUser) {
+      sendJson(response, 401, { error: 'Leaderboard sonucu server tarafından oluşturulmalıdır.' });
       return true;
     }
-    const pName = authUser ? authUser.username : requestedName;
-    const pScore = Math.min(100000000, Math.max(0, Number(body.score || body.gold || 0)));
-    const pGold = Math.min(100000000, Math.max(0, Number(body.gold || body.coins || 0)));
-    const pKills = Math.min(100000, Math.max(0, Number(body.kills || 0)));
-    const pTime = Math.min(86400, Math.max(0, Number(body.timeAlive || body.timePlayed || 0)));
-    recordDeathScore(pName, pScore, pGold, pKills, pTime, authUser, Boolean(authUser));
-    sendJson(response, 200, { ok: true });
+    sendJson(response, 200, { ok: true, user: publicUser(authUser) });
     return true;
   }
 
@@ -2332,9 +2324,6 @@ async function handleApi(request, response, requestPath) {
           user.settings[key] = value;
         }
       }
-    }
-    if (body.questProgress && typeof body.questProgress === 'object') {
-      applyDailyQuestProgress(user, body.questProgress);
     }
     if (body.equippedItems && typeof body.equippedItems === 'object') user.equippedItems = equippedItemsForUser(user, { ...(user.equippedItems || {}), ...body.equippedItems });
     saveAccountData(true);
@@ -4583,12 +4572,12 @@ function onPlayerDeath(playerId) {
   deletePlayerBuildings(playerId);
   const target = players.get(playerId);
   if (target) {
-    if (target._authUser && !target._matchFinalized) {
+    if (!target.isBot && !target._matchFinalized) {
       const matchKills = Math.max(0, (Number(target.kills) || 0) - (Number(target.matchStartKills) || 0));
       const matchScore = Math.max(0, (Number(target.score) || 0) - (Number(target.matchStartScore) || 0));
       const matchGold = Math.max(0, (Number(target.gold) || 0) - (Number(target.matchStartGold) || 0));
       const matchTime = Math.max(0, Math.min(86400, Math.floor((Date.now() - (Number(target.matchStartedAt) || Date.now())) / 1000)));
-      recordDeathScore(target.name, matchScore, matchGold, matchKills, matchTime, target._authUser, true);
+      recordDeathScore(target.name, matchScore, matchGold, matchKills, matchTime, target._authUser, Boolean(target._authUser));
       target._matchFinalized = true;
     }
     target.wood = 0;
