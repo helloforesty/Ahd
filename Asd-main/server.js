@@ -503,6 +503,7 @@ function isClientBanned(clientKey, username) {
   return false;
 }
 const authSecret = process.env.AUTH_SECRET || crypto.createHash('sha256').update(`forestbrawl:${path.resolve(databaseFile)}`).digest('hex');
+const AUTH_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 if (!process.env.AUTH_SECRET) console.warn('[Security] AUTH_SECRET is not set; using a stable development secret. Set AUTH_SECRET in production.');
 function normalizeAllowedOrigin(origin) {
   return String(origin || '')
@@ -1437,10 +1438,12 @@ function findUserForLogin(identifier) {
 }
 
 function createToken(user) {
+  const issuedAt = Date.now();
   const payload = {
     u: user.username,
     id: user.id,
-    iat: Date.now()
+    iat: issuedAt,
+    exp: issuedAt + AUTH_TOKEN_TTL_MS
   };
   const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   const signature = crypto.createHmac('sha256', authSecret).update(encoded).digest('base64url');
@@ -1469,9 +1472,12 @@ function verifyToken(token) {
     let username = '';
     if (decodedStr.startsWith('{')) {
       const parsed = JSON.parse(decodedStr);
+      const issuedAt = Number(parsed.iat) || 0;
+      const expiresAt = Number(parsed.exp) || issuedAt + AUTH_TOKEN_TTL_MS;
+      if (!issuedAt || Date.now() >= expiresAt || Date.now() - issuedAt > AUTH_TOKEN_TTL_MS) return null;
       username = parsed.u;
     } else {
-      username = decodedStr;
+      return null;
     }
     const key = usernameKey(username);
     const user = accountData.users[key];
